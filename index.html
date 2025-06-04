@@ -2520,7 +2520,7 @@
         function selectNewWord() {
             guessInput.value = '';
             showMessage('');
-            timeLeft = 40; 
+            timeLeft = 120; 
             updateGameDisplays();
 
             const availableWords = gameWords.filter(w => !currentWord || w.word.toUpperCase() !== currentWord.word.toUpperCase());
@@ -2565,7 +2565,7 @@
             await initializeGameSounds(); 
 
             score = 0;
-            timeLeft = 40;
+            timeLeft = 120;
             gameStarted = true;
             gameIsOver = false;
             isPassing = false;
