@@ -14,11 +14,11 @@
         .main-container {
             display: flex;
             flex-direction: column;
-            align-items: center; 
+            align-items: center;  
             gap: 20px;
             width: 100%;
-            max-width: 480px; 
-            margin: 0 auto; 
+            max-width: 480px;  
+            margin: 0 auto;  
         }
 
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
@@ -28,10 +28,34 @@
         @keyframes bounce-custom { 0%, 100% { transform: translateY(-15%); animation-timing-function: cubic-bezier(0.8,0,1,1); } 50% { transform: none; animation-timing-function: cubic-bezier(0,0,0.2,1); } }
         .animate-bounce-custom { animation: bounce-custom 1s infinite; }
         
+        @keyframes word-complete-bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
+        .word-complete-animation {
+            animation: word-complete-bounce 0.8s ease-out;
+            background-color: #34D399 !important; /* Tailwind green-400 */
+            border-color: #FBBF24 !important;   /* Tailwind amber-400 */
+        }
+        
         .backdrop-blur-lg { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
         .bg-opacity-10 { background-color: rgba(255, 255, 255, 0.1); }
         .bg-opacity-20 { background-color: rgba(255, 255, 255, 0.2); }
         .bg-opacity-30 { background-color: rgba(255, 255, 255, 0.3); }
+
+        .word-letter {
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .keyboard-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background-color: #4a5568; /* gray-700 */
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-4 bg-gradient-to-br from-purple-950 to-red-950 text-white">
@@ -56,21 +80,26 @@
                 Oyunu Başlat
             </button>
             <div id="gameArea" class="hidden">
-                <div class="flex justify-between items-center mb-6 text-lg font-semibold">
+                <div class="flex justify-between items-center mb-4 text-lg font-semibold">
                     <div id="scoreDisplay" class="bg-white bg-opacity-20 px-4 py-2 rounded-lg shadow-inner">Skor: 0</div>
-                    <div id="timeDisplay" class="bg-white bg-opacity-20 px-4 py-2 rounded-lg shadow-inner">Süre: 40s</div>
+                    <div id="timeDisplay" class="bg-white bg-opacity-20 px-4 py-2 rounded-lg shadow-inner">Süre: 120s</div>
                 </div>
-                <div id="wordLengthDisplayContainer" class="bg-white bg-opacity-20 p-3 rounded-lg mb-4 shadow-inner text-xl font-bold hidden">
-                    Harf Sayısı: <span id="wordLengthDisplay"></span>
+                <div class="flex justify-center items-center mb-4 gap-3">
+                    <span class="font-semibold">Kalan Hak:</span>
+                    <div id="livesDisplay" class="flex gap-2"></div>
                 </div>
+                <div id="wordLengthInfo" class="text-lg font-semibold mb-4 text-purple-300"></div>
+
                 <div id="hintArea" class="bg-white bg-opacity-20 p-6 rounded-lg mb-6 shadow-inner min-h-[120px] flex items-center justify-center">
                     <p id="hintText" class="text-lg leading-relaxed">Kelime yükleniyor...</p>
                 </div>
-                <form id="guessForm" class="flex flex-col gap-4">
-                    <input type="text" id="guessInput" placeholder="TAHMİNİNİZİ BURAYA YAZIN..." class="w-full p-3 rounded-lg bg-white bg-opacity-30 text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-purple-500 border border-white border-opacity-20 shadow-md text-center text-lg uppercase" disabled>
-                    <button type="submit" id="guessButton" class="bg-red-800 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-600 focus:ring-opacity-75" disabled>Tahmin Et</button>
-                    <button type="button" id="passButton" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-500 focus:ring-opacity-75" disabled>Pas Geç</button>
-                </form>
+
+                <div id="wordDisplay" class="flex justify-center flex-wrap gap-2 mb-6"></div>
+                <div id="keyboard" class="grid grid-cols-7 sm:grid-cols-9 gap-2 mt-6"></div>
+                
+                <div class="mt-8">
+                    <button type="button" id="passButton" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-500 focus:ring-opacity-75" disabled>Pas Geç</button>
+                </div>
                 <p id="messageArea" class="mt-4 text-md font-medium bg-white bg-opacity-20 py-2 px-4 rounded-lg shadow-inner hidden"></p>
             </div>
             <div id="gameOverArea" class="hidden mt-6">
@@ -81,54 +110,18 @@
     </div>
 
     <script>
-        // DOM Elements (Oyun)
-        const radioToggleBtn = document.getElementById('radioToggleBtn');
-        const radioAudio = document.getElementById('radioAudio'); // src'si HTML'de sabit
-        const radioStatus = document.getElementById('radioStatus');
-        const startGameBtn = document.getElementById('startGameBtn');
-        const gameArea = document.getElementById('gameArea');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const wordLengthDisplayContainer = document.getElementById('wordLengthDisplayContainer');
-        const wordLengthDisplay = document.getElementById('wordLengthDisplay');
-        const hintArea = document.getElementById('hintArea');
-        const hintText = document.getElementById('hintText');
-        const guessForm = document.getElementById('guessForm');
-        const guessInput = document.getElementById('guessInput');
-        const guessButton = document.getElementById('guessButton');
-        const passButton = document.getElementById('passButton');
-        const messageArea = document.getElementById('messageArea');
-        const gameOverArea = document.getElementById('gameOverArea');
-        const gameOverMessage = document.getElementById('gameOverMessage');
-        const restartGameBtn = document.getElementById('restartGameBtn');
-
-        // Game State
-        let isRadioOn = false;
-        let gameWords = []; 
-        let currentWord = null;
-        let score = 0;
-        let timeLeft = 40;
-        let gameStarted = false;
-        let gameIsOver = false;
-        let isPassing = false;
-        let timerRef = null;
-        
-        // Sound Effects (Tone.js)
-        let correctSound, wrongSound, gameOverSoundInstance, passSound;
-        
-        async function initializeGameSounds() {
-            if (Tone.context.state !== 'running') { 
-                 await Tone.start();
-            }
-            if (!correctSound) { 
-                 correctSound = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.05, decay: 0.2, sustain: 0.1, release: 0.5 } }).toDestination();
-                 wrongSound = new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.05, decay: 0.3, sustain: 0.1, release: 0.5 } }).toDestination();
-                 gameOverSoundInstance = new Tone.Synth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.1, decay: 0.5, sustain: 0.2, release: 1.0 } }).toDestination();
-                 passSound = new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.02, decay: 0.1, sustain: 0.05, release: 0.3 } }).toDestination();
-            }
-        }
-
-        const initialWordsMaster = [
+        // --- YENİ KELİMELERİNİZİ BURAYA EKLEYİN ---
+        // Kendi kelime listenizi bu "userWords" dizisinin içine, aşağıdaki formata uygun şekilde yapıştırabilirsiniz.
+        // Her kelime objesi { word: "KELİME", hint: "İPUCU" } formatında olmalı ve virgülle ayrılmalıdır.
+        // Örnek:
+        // const userWords = [
+        //   { word: "ÖRNEK", hint: "Bu bir örnek kelimedir." },
+        //   { word: "KODLAMA", hint: "Bilgisayara komut verme işlemi." },
+        //   { word: "TASARIM", hint: "Bir şeyin biçimini ve yapısını oluşturma işi." }
+        // ];
+        const userWords = [
+            // Kendi kelime listenizi bu alana yapıştırabilirsiniz.
+            // Listenizin sonundaki kelimeden sonra virgül olmamasına dikkat edin.
 { word: "ADAPTASYON", hint: "Bir canlının veya bir eserin yeni bir ortama veya biçime uyum sağlaması." },
 { word: "AHENK", hint: "Uyum, düzen, parçalar arasında hoşa giden bir bütünlük." },
 { word: "AKİDE", hint: "İnanç, bir dine veya öğretiye bağlı temel ilke." },
@@ -2488,15 +2481,83 @@
             { word: "SENFONİ", hint: "Genellikle dört bölümden oluşan, orkestra için yazılmış büyük çaplı müzik eseri." },
             { word: "VOKALİST", hint: "Bir müzik grubunda şarkı söyleyen kişi, solist." }
         ];
+
+
+        // --- OYUN KODU (Bu alana dokunmanıza gerek yok) ---
+
+        // DOM Elements
+        const radioToggleBtn = document.getElementById('radioToggleBtn');
+        const radioAudio = document.getElementById('radioAudio');
+        const radioStatus = document.getElementById('radioStatus');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const gameArea = document.getElementById('gameArea');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const livesDisplay = document.getElementById('livesDisplay');
+        const wordLengthInfo = document.getElementById('wordLengthInfo');
+        const hintText = document.getElementById('hintText');
+        const wordDisplay = document.getElementById('wordDisplay');
+        const keyboard = document.getElementById('keyboard');
+        const passButton = document.getElementById('passButton');
+        const messageArea = document.getElementById('messageArea');
+        const gameOverArea = document.getElementById('gameOverArea');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+        const restartGameBtn = document.getElementById('restartGameBtn');
+
+        // Game State
+        let isRadioOn = false;
+        let gameWords = [];  
+        let currentWord = null;
+        let score = 0;
+        let timeLeft = 120;
+        let gameStarted = false;
+        let gameIsOver = false;
+        let isPassing = false;
+        let timerRef = null;
+        let wrongGuesses = 0;
+        const MAX_WRONG_GUESSES = 4;
+        let correctlyGuessedLetters = [];
+        const TURKISH_ALPHABET = ['A', 'B', 'C', 'Ç', 'D', 'E', 'F', 'G', 'Ğ', 'H', 'I', 'İ', 'J', 'K', 'L', 'M', 'N', 'O', 'Ö', 'P', 'R', 'S', 'Ş', 'T', 'U', 'Ü', 'V', 'Y', 'Z'];
+
+        // Sound Effects (Tone.js)
+        let correctSound, wrongSound, gameOverSoundInstance, passSound, wordCompleteSound;
+        
+        async function initializeGameSounds() {
+            if (Tone.context.state !== 'running') {  
+                await Tone.start();
+            }
+            if (!correctSound) {
+                correctSound = new Tone.Synth({ oscillator: { type: "triangle8" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination();
+                wrongSound = new Tone.FMSynth({ harmonicity: 1.5, modulationIndex: 8, oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.05, release: 0.5 }, modulation: { type: "square" }, modulationEnvelope: { attack: 0.1, decay: 0.1, sustain: 0.2, release: 0.3 } }).toDestination();
+                const chorus = new Tone.Chorus(2, 2.5, 0.7).toDestination().start();
+                gameOverSoundInstance = new Tone.AMSynth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.2, decay: 0.8, sustain: 0.2, release: 1.0 } }).connect(chorus);
+                passSound = new Tone.MembraneSynth({ pitchDecay: 0.02, octaves: 5, oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.3, sustain: 0.01, release: 0.5, attackCurve: "exponential" } }).toDestination();
+                wordCompleteSound = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.05, decay: 0.4, sustain: 0.2, release: 0.8 }
+                }).toDestination();
+            }
+        }
+
+        const initialWordsMaster = [
+            { word: "ADAPTASYON", hint: "Bir canlının veya bir eserin yeni bir ortama veya biçime uyum sağlaması." },
+            { word: "AHENK", hint: "Uyum, düzen, parçalar arasında hoşa giden bir bütünlük." },
+            { word: "AKİDE", hint: "İnanç, bir dine veya öğretiye bağlı temel ilke." },
+            { word: "AKSİYOM", hint: "İspatsız olarak kabul edilen temel önerme, belit." },
+            { word: "FELSEFE", hint: "Varlığın ve bilginin kaynağını bilimsel olarak araştıran düşünce sistemi." },
+            { word: "GALAKSİ", hint: "Milyarlarca yıldız, gaz ve toz bulutundan oluşan devasa gök cismi sistemi." },
+            { word: "MİMARİ", hint: "Yapıların ve fiziksel çevrenin tasarımı ve inşası sanatı." },
+            { word: "PARADOKS", hint: "Görünüşte doğru olan bir ifade veya ifadeler topluluğunun bir çelişki oluşturması." },
+            { word: "RİTİM", hint: "Bir dizede, bir notada vurgu, uzunluk veya ses özelliklerinin, durakların düzenli olarak tekrarlanmasından doğan ses uyumu." },
+            { word: "NOSTALJİ", hint: "Geçmişte kalan güzelliklere duyulan özlem." }
+        ];
         
         // Radyo Fonksiyonları
         function playRadio() {
             if (Tone.context.state !== 'running') {
-                 Tone.start().then(() => {
-                    radioAudio.play().catch(e => console.error("Radyo çalma hatası:", e));
-                 });
+                Tone.start().then(() => { radioAudio.play().catch(e => console.error("Radyo çalma hatası:", e)); });
             } else {
-                 radioAudio.play().catch(e => console.error("Radyo çalma hatası:", e));
+                radioAudio.play().catch(e => console.error("Radyo çalma hatası:", e));
             }
             isRadioOn = true;
             radioToggleBtn.textContent = 'Kapat';
@@ -2515,64 +2576,152 @@
         }
 
         // Oyun Fonksiyonları
-        function getHintForWord(wordObj) { return wordObj.hint; }
-
         function selectNewWord() {
-            guessInput.value = '';
+            isPassing = false;
             showMessage('');
             timeLeft = 120; 
-            updateGameDisplays();
-
-            const availableWords = gameWords.filter(w => !currentWord || w.word.toUpperCase() !== currentWord.word.toUpperCase());
+            wrongGuesses = 0;
+            correctlyGuessedLetters = [];
+            const usedWords = currentWord ? [currentWord.word.toUpperCase()] : [];
+            const availableWords = gameWords.filter(w => !usedWords.includes(w.word.toUpperCase()));
             if (availableWords.length === 0) {
                 setGameIsOverState(true, `Tüm kelimeleri bildiniz! Tebrikler! Skorunuz: ${score}`);
                 return;
             }
             const randomIndex = Math.floor(Math.random() * availableWords.length);
-            currentWord = availableWords[randomIndex]; 
-            
+            currentWord = availableWords[randomIndex];  
+            wordLengthInfo.textContent = `Kelime: ${currentWord.word.length} Harfli`;
             hintText.textContent = currentWord.hint;
-            wordLengthDisplay.textContent = currentWord.word.length;
-            wordLengthDisplayContainer.classList.remove('hidden');
-            guessInput.disabled = false; 
-            guessButton.disabled = guessInput.value.trim() === ''; 
-            passButton.disabled = false; 
-            guessInput.focus();
+            passButton.disabled = false;  
+            createWordDisplay();
+            createKeyboard();
+            updateLivesDisplay();
+            updateGameDisplays();
             startGameTimer(); 
+        }
+
+        function createWordDisplay() {
+            wordDisplay.innerHTML = '';
+            currentWord.word.split('').forEach(() => {
+                const letterBox = document.createElement('div');
+                letterBox.className = 'word-letter border-2 border-white/30 rounded-lg flex items-center justify-center font-bold text-white bg-white/20';
+                wordDisplay.appendChild(letterBox);
+            });
+        }
+        
+        function updateWordDisplay() {
+            const letters = wordDisplay.children;
+            currentWord.word.split('').forEach((char, index) => {
+                if (correctlyGuessedLetters.includes(char)) {
+                    letters[index].textContent = char;
+                }
+            });
+        }
+
+        function createKeyboard() {
+            keyboard.innerHTML = '';
+            TURKISH_ALPHABET.forEach(letter => {
+                const key = document.createElement('button');
+                key.textContent = letter;
+                key.className = 'keyboard-btn bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-2 rounded-lg shadow-md transform transition duration-200 hover:scale-110';
+                key.addEventListener('click', () => handleLetterClick(letter, key));
+                keyboard.appendChild(key);
+            });
+        }
+
+        function updateLivesDisplay() {
+            livesDisplay.innerHTML = '';
+            const remainingLives = (MAX_WRONG_GUESSES - 1) - wrongGuesses;
+            for (let i = 0; i < remainingLives; i++) {
+                const heart = document.createElement('span');
+                heart.textContent = '❤️';
+                heart.className = 'text-2xl drop-shadow-lg';
+                livesDisplay.appendChild(heart);
+            }
+        }
+
+        function handleLetterClick(letter, keyElement) {
+            if (gameIsOver || isPassing) return;
+            keyElement.disabled = true;
+
+            if (currentWord.word.includes(letter)) {
+                if(correctSound) correctSound.triggerAttackRelease("G5", "16n");
+                correctlyGuessedLetters.push(letter);
+                updateWordDisplay();
+                
+                const uniqueLettersInWord = [...new Set(currentWord.word.split(''))];
+                if (uniqueLettersInWord.every(l => correctlyGuessedLetters.includes(l))) {
+                    score++;
+                    showMessage('Tebrikler, kelimeyi buldunuz!');
+                    clearInterval(timerRef);
+                    if(wordCompleteSound) wordCompleteSound.triggerAttackRelease(["C5", "E5", "G5"], "8n");
+                    const letterBoxes = wordDisplay.children;
+                    for(const box of letterBoxes) {
+                        box.classList.add('word-complete-animation');
+                    }
+                    setTimeout(() => {
+                        gameWords = gameWords.filter(w => w.word.toUpperCase() !== currentWord.word.toUpperCase());
+                        if (gameWords.length === 0) {
+                            setGameIsOverState(true, `Tüm kelimeleri bildiniz! Harika! Skorunuz: ${score}`);
+                        } else {
+                            selectNewWord();
+                        }
+                    }, 2000);
+                } else {
+                    showMessage('Doğru harf!');
+                }
+            } else {
+                if(wrongSound) wrongSound.triggerAttackRelease("A2", "8n");
+                wrongGuesses++;
+                updateLivesDisplay();
+                showMessage('Yanlış harf!');
+                
+                if (wrongGuesses >= MAX_WRONG_GUESSES) {
+                    setGameIsOverState(true, `Hakkınız bitti! Doğru kelime: ${currentWord.word}. Skorunuz: ${score}`);
+                    if(gameOverSoundInstance) gameOverSoundInstance.triggerAttackRelease("C3", "1n");
+                }
+            }
         }
 
         function startGameTimer() {
             clearInterval(timerRef);
-            if (gameStarted && timeLeft > 0 && !gameIsOver && !isPassing) {
+            if (gameStarted && !gameIsOver && !isPassing) {
                 timerRef = setInterval(() => {
                     timeLeft--;
                     updateGameDisplays();
                     if (timeLeft <= 0) {
                         clearInterval(timerRef);
                         setGameIsOverState(true, `Süre doldu! Doğru kelime: ${currentWord.word}. Skorunuz: ${score}`);
-                        if(gameOverSoundInstance) gameOverSoundInstance.triggerAttackRelease("A2", "1n");
+                        if(gameOverSoundInstance) gameOverSoundInstance.triggerAttackRelease("C3", "1n");
                     }
                 }, 1000);
             }
         }
         
+        // GÜNCELLENMİŞ FONKSİYON: Kullanıcı kelimelerini de dahil eder.
         function initializeWordListForNewGame() {
-            gameWords = [...initialWordsMaster.map(wordObj => ({ ...wordObj, word: wordObj.word.toUpperCase() }))];
+            // Ana kelime listesi ile kullanıcı kelimelerini birleştir.
+            const allWords = [...initialWordsMaster, ...userWords];
+
+            // Tüm kelimeleri büyük harfe çevir ve oyun listesine ata.
+            gameWords = [...allWords.map(wordObj => ({ ...wordObj, word: wordObj.word.toUpperCase() }))];
+            
+            // Kelimeleri karıştır.
+            gameWords.sort(() => Math.random() - 0.5);
             currentWord = null; 
         }
 
         async function startGame() {
             await initializeGameSounds(); 
-
             score = 0;
             timeLeft = 120;
             gameStarted = true;
             gameIsOver = false;
             isPassing = false;
+            wrongGuesses = 0;
+            correctlyGuessedLetters = [];
             showMessage('');
-            guessInput.value = '';
             initializeWordListForNewGame(); 
-
             if (gameWords.length === 0) { 
                 setGameIsOverState(true, "Oynanacak kelime bulunamadı!");
                 return;
@@ -2582,29 +2731,33 @@
             gameOverArea.classList.add('hidden');
             selectNewWord(); 
             updateGameDisplays(); 
-            guessInput.focus();
         }
 
-        function restartGame() { startGame(); }
+        function restartGame() {
+            gameOverArea.classList.add('hidden');
+            startGame(); 
+        }
 
         function updateGameDisplays() {
             scoreDisplay.textContent = `Skor: ${score}`;
             timeDisplay.textContent = `Süre: ${timeLeft}s`;
-            if (score >= 10) { 
+            if (score >= 5) { 
                 scoreDisplay.classList.add('text-yellow-400', 'animate-pulse-custom');
             } else {
                 scoreDisplay.classList.remove('text-yellow-400', 'animate-pulse-custom');
             }
-            const inputIsEmpty = guessInput.value.trim() === '';
-            guessButton.disabled = isPassing || gameIsOver || inputIsEmpty;
             passButton.disabled = isPassing || gameIsOver || !currentWord; 
-            guessInput.disabled = isPassing || gameIsOver || !currentWord; 
         }
         
-        function showMessage(msg) {
+        function showMessage(msg, duration = 2000) {
             if (msg) {
                 messageArea.textContent = msg;
                 messageArea.classList.remove('hidden');
+                setTimeout(() => {
+                    if (messageArea.textContent === msg) {
+                       messageArea.classList.add('hidden');
+                    }
+                }, duration);
             } else {
                 messageArea.classList.add('hidden');
             }
@@ -2616,76 +2769,47 @@
                 clearInterval(timerRef);
                 gameStarted = false; 
                 gameOverMessage.textContent = msg;
-                gameArea.classList.add('hidden'); 
+                gameArea.classList.add('hidden');  
                 gameOverArea.classList.remove('hidden');
-                guessInput.disabled = true;
-                guessButton.disabled = true;
                 passButton.disabled = true;
             }
         }
 
-        // Event Listeners (Oyun)
-        guessInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.toLocaleUpperCase('tr-TR');
-            showMessage('');
-            guessButton.disabled = e.target.value.trim() === '' || isPassing || gameIsOver;
-        });
-
-        guessForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (!currentWord || !gameStarted || gameIsOver || isPassing || guessInput.value.trim() === '') return;
-            const normalizedInput = guessInput.value.trim();
-            const normalizedWord = currentWord.word;
-            if (normalizedInput === normalizedWord) {
-                score++;
-                showMessage('Doğru tahmin!');
-                if(correctSound) correctSound.triggerAttackRelease("C5", "8n");
-                gameWords = gameWords.filter(w => w.word.toUpperCase() !== currentWord.word.toUpperCase());
-                if (gameWords.length === 0) { 
-                     setGameIsOverState(true, `Tüm kelimeleri bildiniz! Tebrikler! Skorunuz: ${score}`);
-                } else {
-                    selectNewWord(); 
-                }
-            } else {
-                showMessage('Yanlış tahmin. Tekrar deneyin.');
-                if(wrongSound) wrongSound.triggerAttackRelease("C3", "8n");
-            }
-            updateGameDisplays();
-        });
-
         passButton.addEventListener('click', () => {
             if (!gameStarted || gameIsOver || isPassing || !currentWord) return;
             isPassing = true;
-            guessInput.disabled = true;
-            guessButton.disabled = true;
             passButton.disabled = true;
-            if(passSound) passSound.triggerAttackRelease("D3", "8n");
-            hintText.innerHTML = `<p class="text-3xl font-bold text-yellow-300 animate-bounce-custom">${currentWord.word}</p>`;
-            wordLengthDisplayContainer.classList.add('hidden');
-            score = 0; 
+            if(passSound) passSound.triggerAttackRelease("C2", "8n");
+            
+            hintText.innerHTML = `<span class="text-3xl font-bold text-yellow-300 animate-bounce-custom">${currentWord.word}</span>`;
+            hintText.classList.remove('text-lg', 'leading-relaxed');
+            
+            wordLengthInfo.textContent = ''; 
+            score = 0;
             updateGameDisplays();
             clearInterval(timerRef); 
+            
             gameWords = gameWords.filter(w => w.word.toUpperCase() !== currentWord.word.toUpperCase());
+
             setTimeout(() => {
                 isPassing = false;
+                
+                hintText.innerHTML = '';
+                hintText.classList.add('text-lg', 'leading-relaxed');
+
                 if (gameWords.length === 0) { 
-                     setGameIsOverState(true, `Tüm kelimeleri bildiniz! Skorunuz: ${score}`);
+                    setGameIsOverState(true, `Tüm kelimeleri geçtiniz! Skorunuz: ${score}`);
                 } else {
-                    selectNewWord(); 
+                    selectNewWord();
                 }
-            }, 2000);
+            }, 2500);
         });
         
         startGameBtn.addEventListener('click', startGame);
         restartGameBtn.addEventListener('click', restartGame);
         
-        // Event Listeners (Radyo)
         radioToggleBtn.addEventListener('click', () => {
-            if (isRadioOn) {
-                pauseRadio();
-            } else {
-                playRadio();
-            }
+            if (isRadioOn) { pauseRadio(); } else { playRadio(); }
         });
 
         // Initial Setup
